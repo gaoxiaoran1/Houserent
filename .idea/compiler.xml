@@ -8,12 +8,22 @@
         <outputRelativeToContentRoot value="true" />
         <module name="common" />
         <module name="erueka" />
+        <module name="own_api" />
+        <module name="own_feign" />
+        <module name="own_provider" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="freely_feign" target="1.8" />
+      <module name="freely_provider" target="1.8" />
+      <module name="owner_api" target="1.8" />
+      <module name="owner_feign" target="1.8" />
+      <module name="owner_provider" target="1.8" />
+    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
-      <module name="erueka" options="-parameters" />
+      <module name="erueka" options="" />
     </option>
   </component>
 </project>

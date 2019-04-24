@@ -1,0 +1,835 @@
+//判断是不是PC，不是跳到业主M站
+if (/Android|webOS|iPhone|iPod|BlackBerry/i.test(navigator.userAgent)) {
+	window.location.href = "/m/index.html"
+}
+
+var submitUrl;
+var base = window.location.host;
+
+if (base == "yezhu.ziroom.com") { //线上
+	submitUrl = "//yezhu.ziroom.com/entrust/submit/";
+} else if (base == "yezhunew.ziroom.com") { //准生产
+	submitUrl = "http://yezhunew.ziroom.com/entrust/submit/";
+} else if (base == "yezhu.t.ziroom.com") { //测试
+	submitUrl = "http://yezhu.t.ziroom.com/entrust/submit/";
+} else { //本地研发
+	submitUrl = "http://yezhu.t.ziroom.com/entrust/submit/";
+}
+
+//生成唯一标识
+var uid = "";
+var uid_num = "";
+
+function uidFun() {
+	uid = "";
+	for (var i = 0; i < 6; i++) {
+		uid += Math.floor(Math.random() * 10);
+	}
+}
+
+var subFlag = true;
+
+//渠道来源
+var from_id = '';
+
+//从网页地址里获取参数
+function getUrlParam(name) {
+	var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
+	var r = window.location.search.substr(1).match(reg); //匹配目标参数
+	if (r != null) return decodeURI(r[2]);
+	return null; //返回参数值
+}
+
+function checkMobile(b) {
+	return /^1[0-9]{10}$/;
+}
+
+//加盟委托提交函数
+function jiamengSubFn() {
+
+	$("#msgInfo").html("");
+	$("#jiameng_form .input").focus(function () {
+		$("#msgInfo").html(" ");
+	});
+
+	var clientName = $("#clientName").val(),
+		clientTel = $("#clientTel").val(),
+		clientCity = "110000",
+		resblock = $("#clientShequ").val(),
+		house_id = $("#clientShequ").attr("name"),
+		clientQita = $("#clientQita").val();
+
+	clientCity = $("#clientCity").attr("data-id");
+
+	if (clientName == '') {
+		$("#msgInfo").html("请输入姓名！");
+		return false;
+	}
+	if (!checkMobile(clientTel)) {
+		$("#msgInfo").html("请输入正确的手机号！");
+		return false;
+	}
+	if (resblock == '') {
+		$("#msgInfo").html("请输入小区！");
+		return false;
+	}
+
+	var clientTime = Date.parse(new Date());
+	uidFun();
+
+	uid_num = clientTime + uid;
+
+	if (subFlag == true) {
+		$("#jiameng_subbtn").addClass("subbing").val("提交中···");
+		$('#msgInfo').html('');	
+		subFlag = false;
+
+		$.ajax({
+			type: 'post',
+			dataType: "json",
+			timeout: 2000,
+			data: {
+				ownerName: clientName,
+				ownerPhone: clientTel,
+				cityCode: clientCity,
+				villageId: house_id,
+				villageName: resblock,
+				ownerRemark: clientQita,
+				clewSource: from_id,
+				uid: uid_num
+			},
+			//测试
+			url: submitUrl,
+			success: function (data) {
+
+				subFlag = true;
+				$("#jiameng_subbtn").removeClass("subbing").val("提交");
+				if (data.status == 'success') {
+
+					$("#jiameng_box").hide();
+					$("#jiameng_box input.input").val("");
+					$("#jiameng_box #clientShequ").attr("name", "");
+					$("#jiameng_box textarea#clientQita").val("");
+					$("#jiameng_box #clientCity").text("北京").attr("data-id", "110000");
+					$("#jiameng_success").show();
+					if(data.data.isWorkTime != 1){
+						if(data.data.isWorkTime == 2){
+							$("#jiameng_success .success_div").html("自如客服将在2月11号9:00后电话联系您<br>自如祝您新年快乐");
+						}else{
+							$("#jiameng_success .success_div").html("客服工作时间9:00-21:00。");
+						}
+					}else{
+						$("#jiameng_success .success_div").html("客服将在30分钟内联系您，请保持电话畅通。");
+					}
+					window._vds.track("submitSuccess", {
+						clueCode_var: from_id
+					});
+				}
+				if (data.status == 'failure') {
+					alert(data.error_message);
+				}
+			},
+			error: function () {
+				$('#msgInfo').html('提交失败，请重新提交');	
+				subFlag = true;
+				$("#jiameng_subbtn").removeClass("subbing").val("提交");
+
+			},
+			complete: function (XMLHttpRequest, status) { //当请求完成时调用函数
+				
+				if (status == 'timeout') { //status == 'timeout'意为超时,status的可能取值：success,notmodified,nocontent,error,timeout,abort,parsererror 
+				$('#msgInfo').html('请求操时，请重新提交');	
+				$("#jiameng_subbtn").removeClass("subbing").val("提交");
+				subFlag = true;
+
+				}
+			}
+		});
+		window._vds.track("submitBtnClck");
+	}
+
+}
+
+function lxFun2(f, e) {
+	var h = $(f).val(),
+		g = $(e).attr("data-id");
+	h ? $("#lx_box2").css({
+		display: "block"
+	}) : $("#lx_box2").css({
+		display: "none"
+	}), "" != h && $.ajax({
+		type: "GET",
+		data: {
+			resblock: h,
+			city_code: g
+		},
+		url: "//interfaces.ziroom.com/index.php?_p=ownerpc&_a=selectBuildingApi",
+		dataType: "jsonp",
+		jsonp: "callback",
+		success: function (a) {
+			var l, k, j, i;
+			if ("success" == a.status && "" != a.data) {
+				for (l = "", k = a.data.length, j = 0; k > j && 5 > j; j++) {
+					l += "<a href='javascript:void(0)' id='" + a.data[j].resblock_id + "'>" + a.data[j].resblock_name + "</a>";
+				}
+				i = "<div  class='con'>" + l + "</div>", $(f).next(".lx_box").empty().append(i);
+			} else {
+				$(f).next(".lx_box").empty();
+			}
+		},
+		error: function () {}
+	});
+}
+
+function webChange2() {
+	lxFun2("#clientShequ", "#clientCity");
+}
+//获取url地址中的参数
+function getQueryString(strParame) {
+	var args = new Object();
+	var query = location.search.substring(1);
+
+	var pairs = query.split("&"); //将key=value
+	for (var i = 0; i < pairs.length; i++) {
+		var pos = pairs[i].indexOf('=');
+		if (pos == -1) continue;
+		var argname = pairs[i].substring(0, pos);
+		var value = pairs[i].substring(pos + 1);
+		value = decodeURIComponent(value);
+		args[argname] = value;
+	}
+	return args[strParame];
+};
+//首页
+function indexFun() {
+	//	alert("执行index函数");
+	$(".loading").show();
+
+	//首页数据展示
+	$.getScript('//contentful.ziroom.com/online/zuzhu/yezhu/yezhupc/1b0114c51cc532ed34e1954b5b9e4b58.js?' + new Date().getTime(),
+		function (data) {
+			var data = '';
+			if (typeof (JSON) == 'undefined') {
+				data = eval("(" + js1071 + ")");
+			} else {
+				data = JSON.parse(js1071);
+			}
+			//首页banner
+			if (window.location.href.indexOf("utm_source") != -1 && getQueryString("utm_source") != "") {
+				var js_id = getQueryString("id");
+				$.getScript("//contentful.ziroom.com/online/zuzhu/" + md5(js_id) + ".js?" + new Date().getTime(), function () {
+					var data_b = {};
+					var dataName = "js" + js_id;
+					var newJSid = eval("(" + dataName + ")");
+					data_b = JSON.parse(newJSid);
+					//首页banner
+					var bg = "background-image:url('" + data_b.b[0].img + "');background-color:" + data_b.b[0].title + ";"
+					$(".index_banner").attr("style", bg);
+				});
+			} else {
+				var bg = "background-image:url('" + data.banner + "');background-color:" + data.f6 + ";"
+				$(".index_banner").attr("style", bg);
+			}
+
+
+			//自如承诺列表
+			$(".pinpai .pinpai_list").eq(0).find(".text").html((data.pinpai + '<span class="more"></span>'));
+			$(".pinpai .pinpai_list").eq(1).find(".text").html(data.shouyi + '<span class="more"></span>');
+			$(".pinpai .pinpai_list").eq(2).find(".text").html(data.fangwu + '<span class="more"></span>');
+			$(".pinpai .pinpai_list").eq(3).find(".text").html(data.zuke + '<span class="more"></span>');
+			//自如产品列表
+			var product_list = "";
+			var product_len = data.ziroom_product.length;
+			for (var i = 0; i < product_len; i++) {
+
+				product_list += '<a href="' + data.ziroom_product[i].target + '" class="list_box">' +
+					'<img src="' + data.ziroom_product[i].img + '" class="img"/>' +
+					'<div class="name">' + data.ziroom_product[i].title + '</div>' +
+					'<div class="text">';
+
+				var desc = data.ziroom_product[i].description.split("#");
+				for (var j = 0; j < desc.length; j++) {
+					product_list += '<p>' + desc[j] + '</p>';
+				}
+				product_list += '</div>' +
+					'<div class="more">了解详情</div>' +
+					'</a>';
+
+			}
+			$(".product_list_box").html(product_list);
+		}
+	);
+
+	//关于自如数据展示
+	$.getScript('//contentful.ziroom.com/online/zuzhu/yezhu/yezhupc/dc58e3a306451c9d670adcd37004f48f.js?' + new Date().getTime(),
+		function (data) {
+			var data = '';
+			if (typeof (JSON) == 'undefined') {
+				data = eval("(" + js1070 + ")");
+			} else {
+				data = JSON.parse(js1070);
+			}
+			//关于自如列表
+			var about_list = "";
+
+			about_list = '<a href="' + data.about_list[0].target + '" class="list_box left_box">' +
+				'<img src="' + data.about_list[0].img + '" class="img"/>' +
+				'<div class="text">' +
+				'<div class="text_info">' +
+				'<h5>' + data.about_list[0].title.replace(/‘/g, "“").replace(/’/g, "”") + '</h5>' +
+				'<p>' + data.about_list[0].description + '</p>' +
+				'</div>' +
+				'</div>' +
+				'</a>' +
+				'<a href="' + data.about_list[1].target + '" class="list_box right_box mb30">' +
+				'<img src="' + data.about_list[1].img + '" class="img"/>' +
+				'<div class="text">' +
+				'<div class="text_info">' +
+				'<h5>' + data.about_list[1].title.replace(/‘/g, "“").replace(/’/g, "”") + '</h5>' +
+				'<p>' + data.about_list[1].description + '</p>' +
+				'</div>' +
+				'</div>' +
+				'</a>' +
+				'<a href="' + data.about_list[2].target + '" class="list_box right_box">' +
+				'<img src="' + data.about_list[2].img + '" class="img"/>' +
+				'<div class="text">' +
+				'<div class="text_info">' +
+				'<h5>' + data.about_list[2].title.replace(/‘/g, "“").replace(/’/g, "”") + '</h5>' +
+				'<p>' + data.about_list[2].description + '</p>' +
+				'</div>' +
+				'</div>' +
+				'</a>';
+
+			$(".about_index_box").html(about_list);
+
+		}
+	);
+
+	//首页-业主怎么说-数据
+	$.getScript('//contentful.ziroom.com/online/zuzhu/yezhu/yezhupc/390e982518a50e280d8e2b535462ec1f.js?' + new Date().getTime(),
+		function (data) {
+			var data = '';
+			if (typeof (JSON) == 'undefined') {
+				data = eval("(" + js1073 + ")");
+			} else {
+				data = JSON.parse(js1073);
+			}
+			//业主怎么说列表
+			var yezhu_say_list = "";
+			var yezhu_say_len = data.yezhu_say.length;
+			for (var i = 0; i < yezhu_say_len; i++) {
+				var info = data.yezhu_say[i].title.split("#");
+				yezhu_say_list += '<div><div class="slide">' +
+					'<a href="' + data.yezhu_say[i].target + '" class="slide">' +
+					'<div class="img">' +
+					'<img src="' + data.yezhu_say[i].img + '"/>' +
+					'</div>' +
+					'<div class="photo"><div class="bg"></div><img src="' + info[3] + '"/></div>' +
+					'<div class="name">' + info[1] + ' | ' + info[2] + '</div>' +
+					'<div class="yz_title">' + info[0].replace(/‘/g, "“").replace(/’/g, "”") + '</div>' +
+					'<div class="text"><div class="bg">阅读全部</div><div class="txt">';
+
+				var text = data.yezhu_say[i].description.split("#");
+				for (var j = 0; j < text.length; j++) {
+					yezhu_say_list += '<p>' + text[j].replace(/‘/g, "“").replace(/’/g, "”") + '</p>';
+				}
+
+				yezhu_say_list += '</div></div>' +
+					'</a>' +
+					'</div></div>';
+			}
+
+			$(".yezhu_say_box").html(yezhu_say_list);
+
+			var _t = setTimeout(function () {
+
+				$('#yezhu_slick').slick({
+					slidesToShow: 1,
+					dots: true,
+					arrows: true,
+					infinite: true,
+					autoplay: true,
+					autoplaySpeed: 4000,
+					speed: 300,
+					slidesToShow: 3,
+					slidesToScroll: 3
+				});
+
+				if (document.body.clientWidth < 1400) {
+					$("#yezhu_slick .slick-prev").hide();
+					$("#yezhu_slick .slick-next").hide();
+					$("#yezhu_slick .slick-dots").show();
+				} else {
+					$("#yezhu_slick .slick-prev").show();
+					$("#yezhu_slick .slick-next").show();
+					$("#yezhu_slick .slick-dots").hide();
+				}
+
+				window.onresize = function () {
+					if (document.body.clientWidth < 1400) {
+						$("#yezhu_slick .slick-prev").hide();
+						$("#yezhu_slick .slick-next").hide();
+						$("#yezhu_slick .slick-dots").show();
+					} else {
+						$("#yezhu_slick .slick-prev").show();
+						$("#yezhu_slick .slick-next").show();
+						$("#yezhu_slick .slick-dots").hide();
+					}
+				}
+
+				$("#yezhu_slick .swiper-slide").hover(function () {
+					mySwiper.stopAutoplay();
+				}, function () {
+					mySwiper.startAutoplay();
+				});
+
+				clearTimeout(_t);
+			}, 200);
+
+		}
+	);
+
+	var _a = setTimeout(function () {
+		$(".loading").hide();
+		clearTimeout(_a);
+	}, 300);
+
+}
+
+//关于自如二级页
+function aboutFun() {
+	$(".loading").show();
+	$.getScript('//contentful.ziroom.com/online/zuzhu/yezhu/yezhupc/dc58e3a306451c9d670adcd37004f48f.js?' + new Date().getTime(),
+		function (data) {
+			var data = '';
+			if (typeof (JSON) == 'undefined') {
+				data = eval("(" + js1070 + ")");
+			} else {
+				data = JSON.parse(js1070);
+			}
+			//关于自如列表
+			var about_list = "";
+			var about_len = data.about_list.length;
+			for (var i = 0; i < about_len; i++) {
+				about_list += '<a href="' + data.about_list[i].target + '" class="list_box">' +
+					'<img src="' + data.about_list[i].img + '" class="img"/>' +
+					'<div class="text">' +
+					'<div class="text_info">' +
+					'<h5>' + data.about_list[i].title.replace(/‘/g, "“").replace(/’/g, "”") + '</h5>' +
+					'<p>' + data.about_list[i].description + '</p>' +
+					'</div>' +
+					'</div>' +
+					'</a>';
+			}
+			$(".about_list").html(about_list);
+
+			$(".loading").hide();
+		}
+	);
+}
+
+var ie = false;
+
+function getBrowserInfo() {
+	var agent = navigator.userAgent.toLowerCase();
+
+	var regStr_ie = /msie [\d.]+;/gi;
+	var regStr_ff = /firefox\/[\d.]+/gi
+	var regStr_chrome = /chrome\/[\d.]+/gi;
+	var regStr_saf = /safari\/[\d.]+/gi;
+	//IE
+	if (agent.indexOf("msie") > 0) {
+		ie = true;
+		return agent.match(regStr_ie);
+	}
+
+	//firefox
+	if (agent.indexOf("firefox") > 0) {
+		return agent.match(regStr_ff);
+	}
+
+	//Chrome
+	if (agent.indexOf("chrome") > 0) {
+		return agent.match(regStr_chrome);
+	}
+
+	//Safari
+	if (agent.indexOf("safari") > 0 && agent.indexOf("chrome") < 0) {
+		return agent.match(regStr_saf);
+	}
+
+}
+
+//品牌相关二级页面
+function ziroomFun() {
+	$(".loading").show();
+	if (getUrlParam("name")) {
+		var rel = getUrlParam("name") - 1;
+		$(".menu_left li").eq(rel).addClass("on").siblings("li").removeClass("on");
+		$(".content_right .item").eq(rel).css({
+			"display": "inline-block"
+		}).siblings(".item").css({
+			"display": "none"
+		});
+	} else {
+		$(".menu_left li").eq(0).addClass("on").siblings("li").removeClass("on");
+		$(".content_right .item").eq(0).css({
+			"display": "inline-block"
+		}).siblings(".item").css({
+			"display": "none"
+		});
+		//		history.replaceState(null, null, window.location.href.split("?")[0] + "?name=1");
+	}
+
+	var browser = getBrowserInfo();
+	//	alert(browser); 
+	var verinfo = (browser + "").replace(/[^0-9.]/ig, "");
+	//	alert(verinfo); 
+
+	pinpai();
+	zukeFun();
+	fangwuFun();
+
+	$(".menu_left li").click(function () {
+		$(this).addClass("on").siblings("li").removeClass("on");
+		var n = $(this).index();
+		$(".content_right .item").eq(n).css({
+			"display": "inline-block"
+		}).siblings(".item").css({
+			"display": "none"
+		});
+
+		if (ie == true) {
+			//			alert("ie");
+			if (verinfo > 8.0) {
+				if (window.location.href.indexOf("?") == -1) {
+					var url = window.location.href.split("name")[0] + "?name=" + (n + 1);
+					history.replaceState(null, null, url);
+				} else {
+					var url = window.location.href.split("?")[0] + "?name=" + (n + 1);
+					history.replaceState(null, null, url);
+				}
+			} else {
+				var url = "";
+				var host = window.location.host;
+				if (n == 0) {
+					url = "http://" + host + "/site/content/intro?name=1";
+				} else if (n == 1) {
+					url = "http://" + host + "/site/content/intro?name=2";
+				} else if (n == 2) {
+					url = "http://" + host + "/site/content/intro?name=3";
+				} else if (n == 3) {
+					url = "http://" + host + "/site/content/intro?name=4";
+				}
+				//				alert(url)
+				window.location.href = url;
+			}
+		} else {
+			if (window.location.href.indexOf("?") == -1) {
+				var url = window.location.href.split("name")[0] + "?name=" + (n + 1);
+				history.replaceState(null, null, url);
+			} else {
+				var url = window.location.href.split("?")[0] + "?name=" + (n + 1);
+				history.replaceState(null, null, url);
+			}
+
+		}
+	});
+
+	$(".loading").hide();
+
+	$("img.lazy").lazyload({
+		placeholder: "http://image.ziroom.com/g2/M00/0E/49/ChAFfVshxZWAb3IgAAADwXrZn78685.png", //用图片提前占位
+		// placeholder,值为某一图片路径.此图片用来占据将要加载的图片的位置,待图片加载时,占位图则会隐藏
+		effect: "fadeIn", // 载入使用何种效果
+		// effect(特效),值有show(直接显示),fadeIn(淡入),slideDown(下拉)等,常用fadeIn
+		threshold: 200, // 提前开始加载
+		// threshold,值为数字,代表页面高度.如设置为200,表示滚动条在离目标位置还有200的高度时就开始加载图片,可以做到不让用户察觉
+		//	event: 'click',  // 事件触发时才加载
+		// event,值有click(点击),mouseover(鼠标划过),sporty(运动的),foobar(…).可以实现鼠标莫过或点击图片才开始加载,后两个值未测试…
+		//	container: $("#container"),  // 对某容器中的图片实现效果
+		// container,值为某容器.lazyload默认在拉动浏览器滚动条时生效,这个参数可以让你在拉动某DIV的滚动条时依次加载其中的图片
+		failurelimit: 10, // 图片排序混乱时
+		// failurelimit,值为数字.lazyload默认在找到第一张不在可见区域里的图片时则不再继续加载,但当HTML容器混乱的时候可能出现可见区域内图片并没加载出来的情况,failurelimit意在加载N张可见区域外的图片,以避免出现这个问题.
+		skip_invisible: false
+		// 可能在你的页面上埋藏可很多隐藏的图片. 比如插件用在对列表的筛选, 你可以不断地修改列表中各条目的显示状态. 为了提升性能, Lazy Load 默认忽略了隐藏图片. 如果你想要加载隐藏图片, 请将 skip_invisible 设为 false
+	});
+}
+
+//品牌可信赖
+function pinpai() {
+	$.getScript('//contentful.ziroom.com/online/zuzhu/yezhu/yezhupc/31857b449c407203749ae32dd0e7d64a.js?' + new Date().getTime(),
+		function (data) {
+			var data = '';
+			if (typeof (JSON) == 'undefined') {
+				data = eval("(" + js1067 + ")");
+			} else {
+				data = JSON.parse(js1067);
+			}
+
+			//关于自如
+			var about_ziroom = "";
+			var len = data.about_ziroom.split("#").length;
+			var about_data = data.about_ziroom.split("#");
+			for (var i = 0; i < len; i++) {
+				about_ziroom += '<p>' + about_data[i].replace(/‘/g, "“").replace(/’/g, "”") + '</p>';
+			}
+			$(".about_ziroom").html(about_ziroom);
+			//自如相关数据
+			$("#house_num").html(data.house_num);
+			$("#yezhu_num").html(data.yezhu_num);
+			$("#ziruke_num").html(data.ziruke_num);
+			$("#city_num").html(data.city_num);
+			//城市列表
+			var city_list_box = "";
+			var city_len = data.city_list.split("#").length;
+			var city_data = data.city_list.split("#");
+			for (var i = 0; i < city_len; i++) {
+				city_list_box += '<img data-original="' + city_data[i] + '" class="city_icon lazy" width="102" height="102"/>';
+			}
+			$(".city_list_box").html(city_list_box);
+			//熊帅头像
+			$(".ceo_photo").attr("src", data.ceo_photo);
+			//媒体报道
+			$(".news_desc").html(data.news_desc);
+			var news_list = "";
+			var news_len = data.news_list.length;
+			for (var i = 0; i < news_len; i++) {
+				news_list += '<div class="list_box">' +
+					'<img data-original="' + data.news_list[i].img + '" class="img lazy" width="445" height="297"/>' +
+					'<div class="text">' +
+					'<div class="time">' + data.news_list[i].title.split("#")[1] + '</div>' +
+					'<div class="name">' + data.news_list[i].title.split("#")[0].replace(/‘/g, "“").replace(/’/g, "”") + '</div>' +
+					'<div class="info">' + data.news_list[i].description.replace(/‘/g, "“").replace(/’/g, "”") + '</div>' +
+					'</div>' +
+					'</div>';
+			}
+			$(".news_list").html(news_list);
+
+			$("img.lazy").lazyload({
+				placeholder: "http://image.ziroom.com/g2/M00/0E/49/ChAFfVshxZWAb3IgAAADwXrZn78685.png", //用图片提前占位
+				// placeholder,值为某一图片路径.此图片用来占据将要加载的图片的位置,待图片加载时,占位图则会隐藏
+				effect: "fadeIn", // 载入使用何种效果
+				// effect(特效),值有show(直接显示),fadeIn(淡入),slideDown(下拉)等,常用fadeIn
+				threshold: 200, // 提前开始加载
+				// threshold,值为数字,代表页面高度.如设置为200,表示滚动条在离目标位置还有200的高度时就开始加载图片,可以做到不让用户察觉
+				//	event: 'click',  // 事件触发时才加载
+				// event,值有click(点击),mouseover(鼠标划过),sporty(运动的),foobar(…).可以实现鼠标莫过或点击图片才开始加载,后两个值未测试…
+				//	container: $("#container"),  // 对某容器中的图片实现效果
+				// container,值为某容器.lazyload默认在拉动浏览器滚动条时生效,这个参数可以让你在拉动某DIV的滚动条时依次加载其中的图片
+				failurelimit: 10, // 图片排序混乱时
+				// failurelimit,值为数字.lazyload默认在找到第一张不在可见区域里的图片时则不再继续加载,但当HTML容器混乱的时候可能出现可见区域内图片并没加载出来的情况,failurelimit意在加载N张可见区域外的图片,以避免出现这个问题.
+				skip_invisible: false
+				// 可能在你的页面上埋藏可很多隐藏的图片. 比如插件用在对列表的筛选, 你可以不断地修改列表中各条目的显示状态. 为了提升性能, Lazy Load 默认忽略了隐藏图片. 如果你想要加载隐藏图片, 请将 skip_invisible 设为 false
+			});
+
+		}
+	);
+}
+
+//租客有保证
+function zukeFun() {
+	$.getScript('//contentful.ziroom.com/online/zuzhu/yezhu/yezhupc/53adaf494dc89ef7196d73636eb2451b.js?' + new Date().getTime(),
+		function (data) {
+			var data = '';
+			if (typeof (JSON) == 'undefined') {
+				data = eval("(" + js1068 + ")");
+			} else {
+				data = JSON.parse(js1068);
+			}
+			//自如客展示
+			var ziruke_list = "";
+			var ziruke_len = data.ziruke_list.length;
+			for (var i = 0; i < ziruke_len; i++) {
+				ziruke_list += '<div class="img_list">' +
+					'<div class="img">' +
+					'<img data-original="' + data.ziruke_list[i].img + '" class="img lazy" width="266" height="343"/>' +
+					'</div>' +
+					'<h5>自如客<span>' + data.ziruke_list[i].title + '</span></h5>' +
+					'<div class="text">' + data.ziruke_list[i].description.replace(/‘/g, "“").replace(/’/g, "”") + '</div>' +
+					'</div>';
+			}
+			$(".zuke_zrk_list_box").html(ziruke_list);
+
+			$("img.lazy").lazyload({
+				placeholder: "http://image.ziroom.com/g2/M00/0E/49/ChAFfVshxZWAb3IgAAADwXrZn78685.png", //用图片提前占位
+				// placeholder,值为某一图片路径.此图片用来占据将要加载的图片的位置,待图片加载时,占位图则会隐藏
+				effect: "fadeIn", // 载入使用何种效果
+				// effect(特效),值有show(直接显示),fadeIn(淡入),slideDown(下拉)等,常用fadeIn
+				threshold: 200, // 提前开始加载
+				// threshold,值为数字,代表页面高度.如设置为200,表示滚动条在离目标位置还有200的高度时就开始加载图片,可以做到不让用户察觉
+				//	event: 'click',  // 事件触发时才加载
+				// event,值有click(点击),mouseover(鼠标划过),sporty(运动的),foobar(…).可以实现鼠标莫过或点击图片才开始加载,后两个值未测试…
+				//	container: $("#container"),  // 对某容器中的图片实现效果
+				// container,值为某容器.lazyload默认在拉动浏览器滚动条时生效,这个参数可以让你在拉动某DIV的滚动条时依次加载其中的图片
+				failurelimit: 10, // 图片排序混乱时
+				// failurelimit,值为数字.lazyload默认在找到第一张不在可见区域里的图片时则不再继续加载,但当HTML容器混乱的时候可能出现可见区域内图片并没加载出来的情况,failurelimit意在加载N张可见区域外的图片,以避免出现这个问题.
+				skip_invisible: false
+				// 可能在你的页面上埋藏可很多隐藏的图片. 比如插件用在对列表的筛选, 你可以不断地修改列表中各条目的显示状态. 为了提升性能, Lazy Load 默认忽略了隐藏图片. 如果你想要加载隐藏图片, 请将 skip_invisible 设为 false
+			});
+
+		}
+	);
+}
+
+//房屋有保护
+function fangwuFun() {
+	$.getScript('//contentful.ziroom.com/online/zuzhu/yezhu/yezhupc/fc2c7c47b918d0c2d792a719dfb602ef.js?' + new Date().getTime(),
+		function (data) {
+			var data = '';
+			if (typeof (JSON) == 'undefined') {
+				data = eval("(" + js1069 + ")");
+			} else {
+				data = JSON.parse(js1069);
+			}
+			//赠送家庭财产保险文案及图片
+			$(".baoxian_text").html(data.baoxian_text);
+			$(".baoxian_img").attr("data-original", data.baoxian_img);
+
+
+			$("img.lazy").lazyload({
+				placeholder: "http://image.ziroom.com/g2/M00/0E/49/ChAFfVshxZWAb3IgAAADwXrZn78685.png", //用图片提前占位
+				// placeholder,值为某一图片路径.此图片用来占据将要加载的图片的位置,待图片加载时,占位图则会隐藏
+				effect: "fadeIn", // 载入使用何种效果
+				// effect(特效),值有show(直接显示),fadeIn(淡入),slideDown(下拉)等,常用fadeIn
+				threshold: 200, // 提前开始加载
+				// threshold,值为数字,代表页面高度.如设置为200,表示滚动条在离目标位置还有200的高度时就开始加载图片,可以做到不让用户察觉
+				//	event: 'click',  // 事件触发时才加载
+				// event,值有click(点击),mouseover(鼠标划过),sporty(运动的),foobar(…).可以实现鼠标莫过或点击图片才开始加载,后两个值未测试…
+				//	container: $("#container"),  // 对某容器中的图片实现效果
+				// container,值为某容器.lazyload默认在拉动浏览器滚动条时生效,这个参数可以让你在拉动某DIV的滚动条时依次加载其中的图片
+				failurelimit: 10, // 图片排序混乱时
+				// failurelimit,值为数字.lazyload默认在找到第一张不在可见区域里的图片时则不再继续加载,但当HTML容器混乱的时候可能出现可见区域内图片并没加载出来的情况,failurelimit意在加载N张可见区域外的图片,以避免出现这个问题.
+				skip_invisible: false
+				// 可能在你的页面上埋藏可很多隐藏的图片. 比如插件用在对列表的筛选, 你可以不断地修改列表中各条目的显示状态. 为了提升性能, Lazy Load 默认忽略了隐藏图片. 如果你想要加载隐藏图片, 请将 skip_invisible 设为 false
+			});
+
+		}
+	);
+}
+
+//产品专题
+function productZhuantiFun() {
+
+	$('#product_zhuanti_swiper').slick({
+		dots: true,
+		arrows: false,
+		infinite: true,
+		autoplay: true,
+		autoplaySpeed: 4000,
+		speed: 300,
+		slidesToShow: 1,
+		slidesToScroll: 1
+	});
+
+}
+
+$(function () {
+
+	if (getUrlParam('from_id')) {
+		from_id = getUrlParam('from_id');
+		$.cookie("from_id", from_id);
+	} else if ($.cookie("from_id")) {
+		from_id = $.cookie("from_id");
+	} else {
+		from_id = 3;
+	}
+
+	$(".lx_input2").focus(function () {
+		$("#lx_box2").css({
+			display: "block"
+		});
+	});
+
+	$(document).click(function () {
+		$("#lx_box").css({
+			display: "none"
+		});
+		$("#lx_box2").css({
+			display: "none"
+		});
+	});
+
+	$("#lx_box2").delegate("a", "click", function () {
+		var b = $(this).text();
+		var c = $(this).attr("id");
+		$(this).parents(".lx_box").siblings(".input").attr("value", b);
+		$(this).parents(".lx_box").siblings(".input").attr("name", c);
+		$(this).parents(".lx_box").hide();
+	})
+
+	if (document.getElementById("clientShequ")) {
+		var resblock2 = document.getElementById("clientShequ");
+		if (window.ActiveXObject) {
+
+			resblock2.onpropertychange = webChange2;
+
+		} else {
+
+			resblock2.addEventListener("input", webChange2, false);
+
+		}
+	}
+
+	$("#jiameng_box .input_box").click(function (b) {
+		b.stopPropagation();
+	});
+
+	//直接展开委托碳层
+	if (getUrlParam('weituo') == 'true') {
+		$("#jiameng_box").show();
+	}
+
+	$("#jiameng_success .close").click(function () {
+		$("#jiameng_success").hide();
+		$("#jiameng_subbtn").removeAttr("disabled");
+		$("#jiameng_box input.input").val("");
+		$("#jiameng_box #clientShequ").val("");
+		$("#jiameng_box #clientShequ").attr("name", "");
+		$("#jiameng_box textarea#clientQita").val("");
+		$("#jiameng_box #clientCity").text("北京").attr("data-id", "110000");
+		document.body.style.overflow = "auto";
+	});
+
+	$("input:text,textarea").blur(function () {
+		var b = /['")><&\\\/\.]/;
+		b.test($(this).val()) && (alert("输入内容含非法字符，请重新输入"), $(this).val(""));
+	});
+
+	$(".ow_box .close").click(function () {
+		$(this).parents(".ow_box").hide();
+		document.body.style.overflow = "auto";
+	});
+
+	$(".weituo_btn").click(function () {
+		$("#jiameng_box").show();
+		window._vds.track("weituoBtnClck");
+		document.body.style.overflow = "hidden";
+	});
+
+	$(".select_box dd a").click(function () {
+		var d, c;
+		$("#clientShequ").val("");
+		$("#lx_box2").hide(), d = $(this).text(), c = String($(this).attr("data-id")), $(this).parents("dd").siblings("dt.current").text(d),
+			$(this).parents("dd").siblings("dt.current").attr("data-id", c), $(this).parents("dd").css({
+				display: "none"
+			});
+	});
+
+	$(".lx_input2").focus(function () {
+		$("#lx_box2").css({
+			display: "block"
+		});
+	});
+
+	$(".select_box").hover(function () {
+		$(this).find("dd").css({
+			display: "block"
+		});
+	}, function () {
+		$(this).find("dd").css({
+			display: "none"
+		});
+	});
+
+});
